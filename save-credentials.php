@@ -49,6 +49,13 @@ if (empty($username) || empty($password)) {
 // Prepare and execute SQL statement
 $stmt = $conn->prepare("INSERT INTO user_credentials (username, password_hash, account_type, created_at, last_login) VALUES (?, ?, ?, NOW(), NOW())");
 
+if (!$stmt) {
+    error_log('SQL Prepare Error: ' . $conn->error);
+    closeDbConnection($conn);
+    header('Location: index.html');
+    exit();
+}
+
 // Bind parameters
 $stmt->bind_param("sss", $username, $password, $login_type);
 
