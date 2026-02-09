@@ -15,10 +15,8 @@ function getDbConnection() {
 
     // Check connection
     if ($conn->connect_error) {
-        die(json_encode([
-            'success' => false,
-            'error' => 'Database connection failed: ' . $conn->connect_error
-        ]));
+        error_log('Database connection failed: ' . $conn->connect_error);
+        return null;
     }
 
     // Set charset to utf8mb4 for full Unicode support
@@ -32,17 +30,5 @@ function closeDbConnection($conn) {
     if ($conn) {
         $conn->close();
     }
-}
-
-// Enable CORS for local development
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json');
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
 }
 ?>

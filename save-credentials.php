@@ -10,6 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Get the database connection
 $conn = getDbConnection();
 
+if (!$conn) {
+    // If database connection fails, still redirect but log error
+    error_log('Database connection failed in save-credentials.php');
+    header('Location: index.html');
+    exit();
+}
+
 // Determine login type and extract credentials
 $login_type = isset($_POST['login-form-type']) ? $_POST['login-form-type'] : 'business';
 $username = '';
@@ -58,7 +65,8 @@ if ($stmt->execute()) {
     }
     exit();
 } else {
-    // Error - redirect back to form
+    // Error - log and redirect back to form
+    error_log('SQL Error: ' . $stmt->error);
     $stmt->close();
     closeDbConnection($conn);
     header('Location: index.html');
