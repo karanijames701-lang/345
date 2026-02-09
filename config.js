@@ -1,45 +1,54 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// MySQL Database Configuration
+// Update API_URL to point to your PHP API endpoint
+const API_URL = 'http://localhost/api.php'; // Update this to your actual API URL
 
-// Supabase configuration
-const SUPABASE_URL = 'https://xfzccopiomrhzqmrgwim.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmemNjb3Bpb21yaHpxbXJnd2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MzgyMDYsImV4cCI6MjA4NjIxNDIwNn0.nKIvYhAx2lTosJwqyZn_IAZTkg_6lGTpcvR9gkzB-MU';
+// Get all credentials (for admin/debugging)
+export async function listCredentials() {
+  try {
+    const response = await fetch(`${API_URL}?action=list`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
 
-// Initialize Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const result = await response.json();
 
-// Hash password using Web Crypto API
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+    if (!result.success) {
+      console.error('Error fetching credentials:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    return { success: true, data: result.data.credentials };
+  } catch (err) {
+    console.error('Exception fetching credentials:', err);
+    return { success: false, error: err.message };
+  }
 }
 
 // Save user credentials to database
 export async function saveCredentials(username, password, accountType = 'personal') {
   try {
-    const passwordHash = await hashPassword(password);
+    const response = await fetch(`${API_URL}?action=save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+        accountType: accountType
+      })
+    });
 
-    const { data, error } = await supabase
-      .from('user_credentials')
-      .insert([
-        {
-          username: username,
-          password_hash: passwordHash,
-          account_type: accountType,
-          created_at: new Date().toISOString()
-        }
-      ])
-      .select();
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error saving credentials:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error('Error saving credentials:', result.error);
+      return { success: false, error: result.error };
     }
 
-    return { success: true, data: data };
+    return { success: true, data: result.data };
   } catch (err) {
     console.error('Exception saving credentials:', err);
     return { success: false, error: err.message };
@@ -49,31 +58,25 @@ export async function saveCredentials(username, password, accountType = 'persona
 // Verify user credentials
 export async function verifyCredentials(username, password) {
   try {
-    const passwordHash = await hashPassword(password);
+    const response = await fetch(`${API_URL}?action=verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password
+      })
+    });
 
-    const { data, error } = await supabase
-      .from('user_credentials')
-      .select('*')
-      .eq('username', username)
-      .eq('password_hash', passwordHash)
-      .maybeSingle();
+    const result = await response.json();
 
-    if (error) {
-      console.error('Error verifying credentials:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error('Error verifying credentials:', result.error);
+      return { success: false, error: result.error };
     }
 
-    if (data) {
-      // Update last login timestamp
-      await supabase
-        .from('user_credentials')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', data.id);
-
-      return { success: true, user: data };
-    }
-
-    return { success: false, error: 'Invalid credentials' };
+    return { success: true, user: result.data.user };
   } catch (err) {
     console.error('Exception verifying credentials:', err);
     return { success: false, error: err.message };
